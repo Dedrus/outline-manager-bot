@@ -4,6 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 using TgBotVPN.Configuration;
 
 namespace TgBotVPN.Services;
@@ -65,7 +66,7 @@ public class TelegramBotService
         var chatId = message.Chat.Id;
         var userId = message.From?.Id ?? 0;
         if (userId == 0) return;
-        
+
         var username = message.From?.Username ?? message.From?.FirstName ?? "Unknown";
         var text = message.Text ?? string.Empty;
 
@@ -76,7 +77,30 @@ public class TelegramBotService
             // Register user if not exists
             await _dbService.GetOrCreateUserAsync(userId, username);
 
-            if (text.StartsWith("/start"))
+            var isAdmin = await _dbService.IsUserAdminAsync(userId);
+
+            // Reply-menu buttons (they arrive as plain text messages)
+            if (text == "🔑 Мой ключ")
+            {
+                await HandleGetKeyAsync(botClient, chatId, userId, cancellationToken);
+            }
+            else if (text == "➕ Создать ключ")
+            {
+                await HandleCreateKeyAsync(botClient, chatId, userId, username, cancellationToken);
+            }
+            else if (text == "❓ Помощь")
+            {
+                await HandleHelpAsync(botClient, chatId, userId, cancellationToken);
+            }
+            else if (isAdmin && text == "👥 На одобрение")
+            {
+                await HandleAdminPendingUsersAsync(botClient, chatId, userId, cancellationToken);
+            }
+            else if (isAdmin && text == "🗝 Все ключи")
+            {
+                await HandleAdminAllKeysAsync(botClient, chatId, userId, cancellationToken);
+            }
+            else if (text.StartsWith("/start"))
             {
                 await HandleStartAsync(botClient, chatId, userId, cancellationToken);
             }
@@ -126,10 +150,12 @@ public class TelegramBotService
 
     private async Task HandleStartAsync(ITelegramBotClient botClient, long chatId, long userId, CancellationToken cancellationToken)
     {
+        var isAdmin = await _dbService.IsUserAdminAsync(userId);
         var message = "👋 Добро пожаловать в Outline VPN бота!\n\n" +
                       "Вы зарегистрированы. Пожалуйста, ожидайте одобрения администратора.\n\n" +
-                      "Введите /help для просмотра доступных команд.";
-        await botClient.SendTextMessageAsync(chatId, message, cancellationToken: cancellationToken);
+                      "Используйте меню снизу или введите /help для просмотра доступных команд.";
+
+        await botClient.SendTextMessageAsync(chatId, message, replyMarkup: GetMenuKeyboard(isAdmin), cancellationToken: cancellationToken);
     }
 
     private async Task HandleCreateKeyAsync(ITelegramBotClient botClient, long chatId, long userId, string username, CancellationToken cancellationToken)
@@ -197,22 +223,22 @@ public class TelegramBotService
         var isAdmin = await _dbService.IsUserAdminAsync(userId);
 
         var helpMessage = "📚 Доступные команды\n\n" +
-                         "/start - Зарегистрироваться в боте\n" +
-                         "/create_key - Создать новый VPN ключ\n" +
-                         "/my_key - Получить текущий ключ\n" +
-                         "/help - Показать эту справку\n";
+                          "/start - Зарегистрироваться в боте\n" +
+                          "/create_key - Создать новый VPN ключ\n" +
+                          "/my_key - Получить текущий ключ\n" +
+                          "/help - Показать эту справку\n";
 
         if (isAdmin)
         {
             helpMessage += "\n👨‍💼 Админ-команды\n" +
-                          "/admin_add_user <telegram_id> - Добавить пользователя\n" +
-                          "/admin_remove_user <telegram_id> - Удалить пользователя\n" +
-                          "/admin_set_limit <telegram_id> <limit_gb> - Установить лимит\n" +
-                          "/admin_pending_users - Список на одобрение\n" +
-                          "/admin_all_keys - Список всех ключей";
+                           "/admin_add_user <telegram_id> - Добавить пользователя\n" +
+                           "/admin_remove_user <telegram_id> - Удалить пользователя\n" +
+                           "/admin_set_limit <telegram_id> <limit_gb> - Установить лимит\n" +
+                           "/admin_pending_users - Список на одобрение\n" +
+                           "/admin_all_keys - Список всех ключей";
         }
 
-        await botClient.SendTextMessageAsync(chatId, helpMessage, cancellationToken: cancellationToken);
+        await botClient.SendTextMessageAsync(chatId, helpMessage, replyMarkup: GetMenuKeyboard(isAdmin), cancellationToken: cancellationToken);
     }
 
     private async Task HandleAdminAddUserAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
@@ -362,6 +388,37 @@ public class TelegramBotService
         }
 
         await botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
+    }
+
+    private ReplyKeyboardMarkup GetMenuKeyboard(bool isAdmin)
+    {
+        var rows = new List<KeyboardButton[]>
+        {
+            new[]
+            {
+                new KeyboardButton("🔑 Мой ключ"),
+                new KeyboardButton("➕ Создать ключ")
+            },
+            new[]
+            {
+                new KeyboardButton("❓ Помощь")
+            }
+        };
+
+        if (isAdmin)
+        {
+            rows.Add(new[]
+            {
+                new KeyboardButton("👥 На одобрение"),
+                new KeyboardButton("🗝 Все ключи")
+            });
+        }
+
+        return new ReplyKeyboardMarkup(rows)
+        {
+            ResizeKeyboard = true,
+            IsPersistent = true
+        };
     }
 
     private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
