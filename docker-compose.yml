@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: .
+    container_name: outline-telegram-bot
+    restart: unless-stopped
+    environment:
+      # Telegram Bot Settings
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ADMIN_ID=${TELEGRAM_ADMIN_ID}
+      
+      # Outline API Settings
+      - OUTLINE_API_URL=${OUTLINE_API_URL}
+      - OUTLINE_CERT_SHA256=${OUTLINE_CERT_SHA256}
+      
+      # Database Settings
+      - DATABASE_CONNECTION_STRING=Data Source=/app/data/vpn_bot.db
+      - DEFAULT_DATA_LIMIT_GB=${DEFAULT_DATA_LIMIT_GB:-100}
+      
+      # Key Update Service Settings
+      - CHECK_INTERVAL_SECONDS=${CHECK_INTERVAL_SECONDS:-10}
+      - UPDATE_INTERVAL_DAYS=${UPDATE_INTERVAL_DAYS:-30}
+    
+    volumes:
+      - bot-data:/app/data
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "TgBotVPN"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  bot-data:
+    name: outline-bot-data

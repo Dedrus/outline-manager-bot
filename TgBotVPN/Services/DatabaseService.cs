@@ -43,7 +43,7 @@ public class DatabaseService
         return user;
     }
 
-    public async Task<TelegramUser> GetUserAsync(long telegramId)
+    public async Task<TelegramUser?> GetUserAsync(long telegramId)
     {
         return await _context.TelegramUsers.FindAsync(telegramId);
     }
@@ -101,7 +101,7 @@ public class DatabaseService
         return key;
     }
 
-    public async Task<OutlineKey> GetUserKeyAsync(long telegramId)
+    public async Task<OutlineKey?> GetUserKeyAsync(long telegramId)
     {
         return await _context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
     }
@@ -147,5 +147,10 @@ public class DatabaseService
     public async Task<List<OutlineKey>> GetAllKeysAsync()
     {
         return await _context.OutlineKeys.ToListAsync();
+    }
+
+    public async Task<List<TelegramUser>> GetAllWhiteListUsersAsync()
+    {
+        return await _context.TelegramUsers.Where(c => c.IsWhitelisted).ToListAsync();
     }
 }

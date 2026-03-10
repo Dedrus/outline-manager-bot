@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.IsWhitelisted).HasDefaultValue(false);
             entity.Property(e => e.IsAdmin).HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.IsWhitelisted);
         });
 
         // Configure OutlineKey
@@ -32,7 +33,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.KeyId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.KeyName).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.AccessUrl).IsRequired();
+            entity.Property(e => e.AccessUrl).IsRequired().HasMaxLength(2040);
             entity.Property(e => e.DataLimitGb).HasDefaultValue(100);
             entity.Property(e => e.LastUpdated).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");

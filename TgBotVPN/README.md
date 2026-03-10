@@ -87,6 +87,7 @@ C:\dev\work\TgBotVPN\bin\Debug\net10.0\TgBotVPN.exe
 - `/admin_set_limit <telegram_id> <limit_gb>` - установить лимит трафика пользователю
 - `/admin_pending_users` - список пользователей, ожидающих одобрения
 - `/admin_all_keys` - список всех созданных ключей
+- `/admin_broadcast <сообщение>` - отправить сообщение всем пользователям бота
 
 ## Архитектура
 

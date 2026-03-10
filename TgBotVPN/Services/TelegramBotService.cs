@@ -136,6 +136,10 @@ public class TelegramBotService
             {
                 await HandleAdminAllKeysAsync(botClient, chatId, userId, cancellationToken);
             }
+            else if (text.StartsWith("/admin_broadcast") && isAdmin)
+            {
+                await HandleAdminBroadcastAsync(botClient, chatId, userId, text, cancellationToken);
+            }
             else
             {
                 await botClient.SendTextMessageAsync(chatId, "❓ Неизвестная команда. Введите /help для списка доступных команд.", cancellationToken: cancellationToken);
@@ -235,7 +239,8 @@ public class TelegramBotService
                            "/admin_remove_user <telegram_id> - Удалить пользователя\n" +
                            "/admin_set_limit <telegram_id> <limit_gb> - Установить лимит\n" +
                            "/admin_pending_users - Список на одобрение\n" +
-                           "/admin_all_keys - Список всех ключей";
+                           "/admin_all_keys - Список всех ключей\n" +
+                           "/admin_broadcast <сообщение> - Отправить сообщение всем пользователям";
         }
 
         await botClient.SendTextMessageAsync(chatId, helpMessage, replyMarkup: GetMenuKeyboard(isAdmin), cancellationToken: cancellationToken);
@@ -388,6 +393,76 @@ public class TelegramBotService
         }
 
         await botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
+    }
+
+    private async Task HandleAdminBroadcastAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
+    {
+        if (userId != _adminTelegramId)
+        {
+            await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Extract message content (everything after "/admin_broadcast ")
+        var messageParts = text.Split(new[] { ' ' }, 2);
+        if (messageParts.Length < 2 || string.IsNullOrWhiteSpace(messageParts[1]))
+        {
+            await botClient.SendTextMessageAsync(chatId, "❌ Неверный формат. Используйте: /admin_broadcast <сообщение>", cancellationToken: cancellationToken);
+            return;
+        }
+
+        var broadcastMessage = messageParts[1];
+        await botClient.SendTextMessageAsync(chatId, "⏳ Отправляю сообщение всем пользователям...", cancellationToken: cancellationToken);
+
+        try
+        {
+            await SendBroadcastAsync(broadcastMessage, cancellationToken);
+            await botClient.SendTextMessageAsync(chatId, "✅ Сообщение успешно отправлено всем пользователям!", cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to send broadcast message");
+            await botClient.SendTextMessageAsync(chatId, "❌ Ошибка при отправке сообщения. Пожалуйста, попробуйте позже.", cancellationToken: cancellationToken);
+        }
+    }
+
+    public async Task SendBroadcastAsync(string message, CancellationToken cancellationToken = default)
+    {
+        var users = await _dbService.GetAllWhiteListUsersAsync();
+        if (users.Count == 0)
+        {
+            _logger.Information("No users found for broadcast");
+            return;
+        }
+
+        _logger.Information("Sending broadcast to {Count} users", users.Count);
+
+        var successCount = 0;
+        var failCount = 0;
+
+        foreach (var user in users)
+        {
+            try
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId: user.TelegramId,
+                    text: message,
+                    cancellationToken: cancellationToken);
+                successCount++;
+                _logger.Information("Broadcast message sent to user {UserId} ({Username})", user.TelegramId, user.Username);
+            }
+            catch (Exception ex)
+            {
+                failCount++;
+                _logger.Warning(ex, "Failed to send broadcast message to user {UserId} ({Username})", user.TelegramId, user.Username);
+                // Continue with other users even if one fails
+            }
+
+            // Add small delay to avoid hitting rate limits
+            await Task.Delay(50, cancellationToken);
+        }
+
+        _logger.Information("Broadcast completed: {SuccessCount} successful, {FailCount} failed", successCount, failCount);
     }
 
     private ReplyKeyboardMarkup GetMenuKeyboard(bool isAdmin)
