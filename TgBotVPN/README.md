@@ -48,8 +48,8 @@
 **Параметры:**
 - `TelegramBot.Token` - токен бота от BotFather
 - `TelegramBot.AdminTelegramId` - ID администратора (только этот пользователь может использовать админ-команды)
+- `TelegramBot.DefaultDataLimitGb` - лимит трафика по умолчанию при создании ключа (по умолчанию 100 ГБ)
 - `Database.ConnectionString` - путь к SQLite базе данных (например: `Data Source=vpn_bot.db`)
-- `Database.DefaultDataLimitGb` - лимит трафика по умолчанию при создании ключа (по умолчанию 100 ГБ)
 - `OutlineApi.Url` - URL API вашего Outline сервера (например: `https://193.0.178.250:6532`)
 - `OutlineApi.ApiKey` - API ключ Outline сервера
 - `KeyUpdateService.CheckIntervalSeconds` - интервал проверки ключей в секундах (по умолчанию 10)

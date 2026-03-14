@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Telegram.Bot;
 using TgBotVPN.Configuration;
 using TgBotVPN.Data;
 using TgBotVPN.Services;
@@ -53,10 +54,17 @@ try
             var ctx = provider.GetRequiredService<AppDbContext>();
             var logger = provider.GetRequiredService<ILogger<DatabaseService>>();
             var adminValidationService = provider.GetRequiredService<AdminValidationService>();
-            var botSettings = provider.GetRequiredService<IOptions<TelegramBotSettings>>().Value;
             return new DatabaseService(ctx, adminValidationService, logger);
         });
+        services.AddSingleton<ITelegramBotClient>(provider =>
+        {
+            var botOpts = provider.GetRequiredService<IOptions<TelegramBotSettings>>().Value;
+            var token = botOpts.Token ?? throw new InvalidOperationException("Bot token not configured");
+            return new TelegramBotClient(token);
+        });
         services.AddScoped<TelegramBotService>();
+        services.AddScoped<AdminService>();
+        services.AddScoped<UserService>();
         services.AddHostedService<KeyUpdateService>();
         services.AddScoped<OutlineApiService>();
         services.AddSingleton<AdminValidationService>();

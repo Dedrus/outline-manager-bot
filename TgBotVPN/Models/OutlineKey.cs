@@ -10,7 +10,5 @@ public class OutlineKey
     public int DataLimitGb { get; set; }
     public DateTime LastUpdated { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    // Foreign key
-    public TelegramUser? TelegramUser { get; set; }
+    public TelegramUser TelegramUser { get; set; } = null!;
 }

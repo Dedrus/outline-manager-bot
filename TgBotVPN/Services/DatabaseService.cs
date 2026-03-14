@@ -11,7 +11,8 @@ public class DatabaseService
     private readonly AdminValidationService _adminValidationService;
     private readonly ILogger<DatabaseService> _logger;
 
-    public DatabaseService(AppDbContext context, AdminValidationService adminValidationService, ILogger<DatabaseService> logger)
+    public DatabaseService(AppDbContext context, AdminValidationService adminValidationService,
+        ILogger<DatabaseService> logger)
     {
         _context = context;
         _adminValidationService = adminValidationService;
@@ -39,7 +40,8 @@ public class DatabaseService
 
         _context.TelegramUsers.Add(user);
         await _context.SaveChangesAsync();
-        _logger.LogInformation("User created: {TelegramId} ({Username}) - IsAdmin: {IsAdmin}", telegramId, username, isAdmin);
+        _logger.LogInformation("User created: {TelegramId} ({Username}) - IsAdmin: {IsAdmin}", telegramId, username,
+            isAdmin);
         return user;
     }
 
@@ -82,7 +84,8 @@ public class DatabaseService
         }
     }
 
-    public async Task<OutlineKey> CreateKeyAsync(long telegramId, string keyId, string keyName, string accessUrl, int dataLimitGb)
+    public async Task<OutlineKey> CreateKeyAsync(long telegramId, string keyId, string keyName, string accessUrl,
+        int dataLimitGb)
     {
         var key = new OutlineKey
         {
@@ -122,7 +125,8 @@ public class DatabaseService
             key.DataLimitGb = dataLimitGb;
             key.LastUpdated = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Key updated for user {TelegramId}: new limit {DataLimit} GB", telegramId, dataLimitGb);
+            _logger.LogInformation("Key updated for user {TelegramId}: new limit {DataLimit} GB", telegramId,
+                dataLimitGb);
         }
     }
 
@@ -144,9 +148,9 @@ public class DatabaseService
             .ToListAsync();
     }
 
-    public async Task<List<OutlineKey>> GetAllKeysAsync()
+    public async Task<List<OutlineKey>> GetAllKeysWithUsersAsync()
     {
-        return await _context.OutlineKeys.ToListAsync();
+        return await _context.OutlineKeys.Include(x => x.TelegramUser).ToListAsync();
     }
 
     public async Task<List<TelegramUser>> GetAllWhiteListUsersAsync()

@@ -7,7 +7,5 @@ public class TelegramUser
     public bool IsWhitelisted { get; set; }
     public bool IsAdmin { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    // Navigation property
     public OutlineKey? OutlineKey { get; set; }
 }
