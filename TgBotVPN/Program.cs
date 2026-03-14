@@ -16,6 +16,7 @@ using TgBotVPN.Services;
 var configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables()
     .Build();
 
 // Setup Serilog
@@ -112,7 +113,7 @@ try
 
     await botService.StartAsync(cts.Token);
 
-    Log.Information("Bot is running. Press Ctrl+C to stop.");
+    Log.Information("Bot is running. Managing outline server with {URL}", host.Services.GetRequiredService<IOptions<OutlineApiSettings>>().Value.Url);
 
     // Keep the application running
     await Task.Delay(Timeout.Infinite, cts.Token);

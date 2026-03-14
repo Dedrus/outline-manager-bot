@@ -156,11 +156,11 @@ public class TelegramBotService
         var isAdmin = await _dbService.IsUserAdminAsync(userId);
         if (!isAdmin)
         {
-            await _adminService.HandleStartAsync(chatId, cancellationToken);
+            await _userService.HandleStartAsync(chatId, cancellationToken);
         }
         else
         {
-            await _userService.HandleStartAsync(chatId, cancellationToken);
+            await _adminService.HandleStartAsync(chatId, cancellationToken);
         }
     }
 
