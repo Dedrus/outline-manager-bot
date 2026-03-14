@@ -10,14 +10,12 @@ namespace TgBotVPN.Services;
 public class OutlineApiService
 {
     private readonly string _apiUrl;
-    private readonly HttpClient _httpClient;
     private readonly ILogger _logger;
     private readonly string _certSha256;
 
-    public OutlineApiService(IOptions<OutlineApiSettings> options, HttpClient httpClient)
+    public OutlineApiService(IOptions<OutlineApiSettings> options)
     {
         var settings = options.Value;
-        _httpClient = httpClient;
         _apiUrl = settings.Url ?? throw new InvalidOperationException("Outline API URL not configured");
         _certSha256 = settings.CertSha256 ?? throw new InvalidOperationException("Outline CertSHA256 not configured");
         _logger = Log.ForContext<OutlineApiService>();

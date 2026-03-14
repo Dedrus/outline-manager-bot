@@ -24,7 +24,7 @@ Both components can be deployed on the same server or different servers for bett
 1. Connect to your Ubuntu server via SSH
 2. Run the official installation script:
    ```bash
-   wget -qO- https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh | bash
+   sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh)"
    ```
 
 3. Save the output which contains important configuration details:

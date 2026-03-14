@@ -1,7 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 using TgBotVPN.Configuration;
@@ -48,22 +51,32 @@ try
         services.AddScoped<DatabaseService>((provider) =>
         {
             var ctx = provider.GetRequiredService<AppDbContext>();
+            var logger = provider.GetRequiredService<ILogger<DatabaseService>>();
+            var adminValidationService = provider.GetRequiredService<AdminValidationService>();
             var botSettings = provider.GetRequiredService<IOptions<TelegramBotSettings>>().Value;
-            return new DatabaseService(ctx, botSettings.AdminTelegramId);
+            return new DatabaseService(ctx, adminValidationService, logger);
         });
-        services.AddHttpClient<OutlineApiService>()
-            .ConfigureHttpClient(client => { })
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                var handler = new HttpClientHandler();
-                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
-                return handler;
-            });
         services.AddScoped<TelegramBotService>();
         services.AddHostedService<KeyUpdateService>();
+        services.AddScoped<OutlineApiService>();
+        services.AddSingleton<AdminValidationService>();
+        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("Database");
     });
 
     builder.UseSerilog();
+
+    // Add web application for health checks
+    builder.ConfigureWebHostDefaults(webBuilder =>
+    {
+        webBuilder.Configure(app =>
+        {
+            app.UseRouting();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapHealthChecks("/health");
+            });
+        });
+    });
 
     var host = builder.Build();
 

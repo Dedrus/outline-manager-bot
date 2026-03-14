@@ -2,6 +2,21 @@
 
 This document provides detailed instructions on how to build, publish, and deploy the Outline Manager Telegram bot using Docker or Podman.
 
+## Health Check
+
+The container includes a health check that verifies the application is running by checking the `/health` endpoint:
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+```
+
+This health check uses curl to query the built-in health endpoint. The endpoint returns "Healthy" when the application is healthy. You can customize the health check parameters by modifying the docker-compose.yml file.
+
 ## Prerequisites
 
 - Docker or Podman installed on your system

@@ -10,7 +10,7 @@ namespace TgBotVPN.Services;
 public class KeyUpdateService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly int _checkIntervalSeconds;
+    private readonly TimeSpan _checkInterval;
     private readonly int _updateIntervalDays;
     private readonly ILogger _logger;
 
@@ -18,15 +18,15 @@ public class KeyUpdateService : BackgroundService
     {
         _serviceProvider = serviceProvider;
         var settings = options.Value;
-        _checkIntervalSeconds = settings.CheckIntervalSeconds;
+        _checkInterval = settings.CheckInterval;
         _updateIntervalDays = settings.UpdateIntervalDays;
         _logger = Log.ForContext<KeyUpdateService>();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.Information("KeyUpdateService started. Check interval: {Seconds}s, Update interval: {Days} days",
-            _checkIntervalSeconds, _updateIntervalDays);
+        _logger.Information("KeyUpdateService started. Check interval: {CheckInterval}, Update interval: {Days} days",
+            _checkInterval, _updateIntervalDays);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -39,7 +39,7 @@ public class KeyUpdateService : BackgroundService
                 _logger.Error(ex, "Error in KeyUpdateService");
             }
 
-            await Task.Delay(_checkIntervalSeconds * 1000, stoppingToken);
+            await Task.Delay(_checkInterval, stoppingToken);
         }
 
         _logger.Information("KeyUpdateService stopped");

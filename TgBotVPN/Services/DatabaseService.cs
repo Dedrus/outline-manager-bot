@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using TgBotVPN.Data;
 using TgBotVPN.Models;
 
@@ -8,14 +8,14 @@ namespace TgBotVPN.Services;
 public class DatabaseService
 {
     private readonly AppDbContext _context;
-    private readonly long _adminTelegramId;
-    private readonly ILogger _logger;
+    private readonly AdminValidationService _adminValidationService;
+    private readonly ILogger<DatabaseService> _logger;
 
-    public DatabaseService(AppDbContext context, long adminTelegramId)
+    public DatabaseService(AppDbContext context, AdminValidationService adminValidationService, ILogger<DatabaseService> logger)
     {
         _context = context;
-        _adminTelegramId = adminTelegramId;
-        _logger = Log.ForContext<DatabaseService>();
+        _adminValidationService = adminValidationService;
+        _logger = logger;
     }
 
     public async Task<TelegramUser> GetOrCreateUserAsync(long telegramId, string username)
@@ -23,23 +23,23 @@ public class DatabaseService
         var user = await _context.TelegramUsers.FindAsync(telegramId);
         if (user != null)
         {
-            _logger.Information("User found: {TelegramId}", telegramId);
+            _logger.LogInformation("User found: {TelegramId}", telegramId);
             return user;
         }
 
-        var isAdmin = telegramId == _adminTelegramId;
+        var isAdmin = _adminValidationService.IsAdmin(telegramId);
         user = new TelegramUser
         {
             TelegramId = telegramId,
             Username = username,
-            IsWhitelisted = isAdmin,  // Admin is automatically whitelisted
+            IsWhitelisted = isAdmin,
             IsAdmin = isAdmin,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.TelegramUsers.Add(user);
         await _context.SaveChangesAsync();
-        _logger.Information("User created: {TelegramId} ({Username}) - IsAdmin: {IsAdmin}", telegramId, username, isAdmin);
+        _logger.LogInformation("User created: {TelegramId} ({Username}) - IsAdmin: {IsAdmin}", telegramId, username, isAdmin);
         return user;
     }
 
@@ -67,7 +67,7 @@ public class DatabaseService
         {
             user.IsWhitelisted = true;
             await _context.SaveChangesAsync();
-            _logger.Information("User added to whitelist: {TelegramId}", telegramId);
+            _logger.LogInformation("User added to whitelist: {TelegramId}", telegramId);
         }
     }
 
@@ -78,7 +78,7 @@ public class DatabaseService
         {
             user.IsWhitelisted = false;
             await _context.SaveChangesAsync();
-            _logger.Information("User removed from whitelist: {TelegramId}", telegramId);
+            _logger.LogInformation("User removed from whitelist: {TelegramId}", telegramId);
         }
     }
 
@@ -97,7 +97,7 @@ public class DatabaseService
 
         _context.OutlineKeys.Add(key);
         await _context.SaveChangesAsync();
-        _logger.Information("Key created for user {TelegramId}: {KeyName}", telegramId, keyName);
+        _logger.LogInformation("Key created for user {TelegramId}: {KeyName}", telegramId, keyName);
         return key;
     }
 
@@ -122,7 +122,7 @@ public class DatabaseService
             key.DataLimitGb = dataLimitGb;
             key.LastUpdated = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            _logger.Information("Key updated for user {TelegramId}: new limit {DataLimit} GB", telegramId, dataLimitGb);
+            _logger.LogInformation("Key updated for user {TelegramId}: new limit {DataLimit} GB", telegramId, dataLimitGb);
         }
     }
 
@@ -133,7 +133,7 @@ public class DatabaseService
         {
             key.LastUpdated = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            _logger.Information("Key LastUpdated refreshed for user {TelegramId}", telegramId);
+            _logger.LogInformation("Key LastUpdated refreshed for user {TelegramId}", telegramId);
         }
     }
 

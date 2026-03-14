@@ -12,15 +12,16 @@ namespace TgBotVPN.Services;
 public class TelegramBotService
 {
     private readonly ITelegramBotClient _botClient;
+    private readonly AdminValidationService _adminValidationService;
     private readonly DatabaseService _dbService;
     private readonly OutlineApiService _outlineService;
-    private readonly long _adminTelegramId;
     private readonly int _defaultDataLimitGb;
     private readonly ILogger _logger;
 
     public TelegramBotService(
         IOptions<TelegramBotSettings> botSettings,
         IOptions<DatabaseSettings> dbSettings,
+        AdminValidationService adminValidationService,
         DatabaseService dbService,
         OutlineApiService outlineService)
     {
@@ -28,10 +29,10 @@ public class TelegramBotService
         var dbOpts = dbSettings.Value;
         
         var token = botOpts.Token ?? throw new InvalidOperationException("Bot token not configured");
-        _adminTelegramId = botOpts.AdminTelegramId;
         _defaultDataLimitGb = dbOpts.DefaultDataLimitGb;
 
         _botClient = new TelegramBotClient(token);
+        _adminValidationService = adminValidationService;
         _dbService = dbService;
         _outlineService = outlineService;
         _logger = Log.ForContext<TelegramBotService>();
@@ -248,7 +249,7 @@ public class TelegramBotService
 
     private async Task HandleAdminAddUserAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;
@@ -276,7 +277,7 @@ public class TelegramBotService
 
     private async Task HandleAdminRemoveUserAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;
@@ -309,7 +310,7 @@ public class TelegramBotService
 
     private async Task HandleAdminSetLimitAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;
@@ -337,7 +338,7 @@ public class TelegramBotService
 
     private async Task HandleAdminPendingUsersAsync(ITelegramBotClient botClient, long chatId, long userId, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;
@@ -364,7 +365,7 @@ public class TelegramBotService
 
     private async Task HandleAdminAllKeysAsync(ITelegramBotClient botClient, long chatId, long userId, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;
@@ -397,7 +398,7 @@ public class TelegramBotService
 
     private async Task HandleAdminBroadcastAsync(ITelegramBotClient botClient, long chatId, long userId, string text, CancellationToken cancellationToken)
     {
-        if (userId != _adminTelegramId)
+        if (!_adminValidationService.IsAdmin(userId))
         {
             await botClient.SendTextMessageAsync(chatId, "❌ Доступ запрещен. Только администратор.", cancellationToken: cancellationToken);
             return;

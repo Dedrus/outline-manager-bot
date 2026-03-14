@@ -23,7 +23,7 @@ RUN mkdir -p /app/data
 # Copy published application
 COPY --from=build /app/publish .
 
-# Expose port (if needed for health checks or webhooks)
+# Expose port for health checks
 EXPOSE 8080
 
 # Set environment variables with defaults
@@ -36,9 +36,9 @@ ENV DEFAULT_DATA_LIMIT_GB="100"
 ENV CHECK_INTERVAL_SECONDS="10"
 ENV UPDATE_INTERVAL_DAYS="30"
 
-# Health check (optional)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD pgrep -f "TgBotVPN" || exit 1
+  CMD curl -f http://localhost:8080/health || exit 1
 
 # Run the application
 ENTRYPOINT ["dotnet", "TgBotVPN.dll"]

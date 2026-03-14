@@ -25,13 +25,16 @@ services:
     volumes:
       - bot-data:/app/data
     
+    ports:
+      - "8080:8080"
+    
     # Health check
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "TgBotVPN"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
 volumes:
   bot-data:
