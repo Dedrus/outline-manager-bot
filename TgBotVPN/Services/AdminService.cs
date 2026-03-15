@@ -58,6 +58,18 @@ public class AdminService
         var message = $"✅ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) добавлен в список разрешенных.";
         await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
             cancellationToken: cancellationToken);
+
+        try
+        {
+            var userNotification = "🎉 Поздравляем! Администратор одобрил вашу заявку.\n\n" +
+                                   "Теперь вы можете получить ваш VPN ключ, используя команду /my_key или кнопку \"🔑 Мой ключ\" в меню.";
+            await _botClient.SendTextMessageAsync(targetUserId, userNotification, cancellationToken: cancellationToken);
+
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception during user notification");
+        }
         _logger.LogInformation("Admin {AdminId} added user {UserId} to whitelist", userId, targetUserId);
     }
 
@@ -250,8 +262,7 @@ public class AdminService
     {
         var helpMessage = "📚 Доступные команды\n\n" +
                           "/start - Зарегистрироваться в боте\n" +
-                          "/create_key - Создать новый VPN ключ\n" +
-                          "/my_key - Получить текущий ключ\n" +
+                          "/my_key - Получить текущий ключ (или создать новый)\n" +
                           "/help - Показать эту справку\n";
 
 
@@ -273,8 +284,7 @@ public class AdminService
         {
             new[]
             {
-                new KeyboardButton("🔑 Мой ключ"),
-                new KeyboardButton("➕ Создать ключ")
+                new KeyboardButton("🔑 Мой ключ")
             },
             new[]
             {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TgBotVPN.Data;
 using TgBotVPN.Models;
@@ -7,21 +8,23 @@ namespace TgBotVPN.Services;
 
 public class DatabaseService
 {
-    private readonly AppDbContext _context;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly AdminValidationService _adminValidationService;
     private readonly ILogger<DatabaseService> _logger;
 
-    public DatabaseService(AppDbContext context, AdminValidationService adminValidationService,
-        ILogger<DatabaseService> logger)
+    public DatabaseService(AdminValidationService adminValidationService,
+        ILogger<DatabaseService> logger, IServiceScopeFactory scopeFactory)
     {
-        _context = context;
         _adminValidationService = adminValidationService;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task<TelegramUser> GetOrCreateUserAsync(long telegramId, string username)
     {
-        var user = await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await context.TelegramUsers.FindAsync(telegramId);
         if (user != null)
         {
             _logger.LogInformation("User found: {TelegramId}", telegramId);
@@ -38,8 +41,8 @@ public class DatabaseService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.TelegramUsers.Add(user);
-        await _context.SaveChangesAsync();
+        context.TelegramUsers.Add(user);
+        await context.SaveChangesAsync();
         _logger.LogInformation("User created: {TelegramId} ({Username}) - IsAdmin: {IsAdmin}", telegramId, username,
             isAdmin);
         return user;
@@ -47,39 +50,49 @@ public class DatabaseService
 
     public async Task<TelegramUser?> GetUserAsync(long telegramId)
     {
-        return await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.TelegramUsers.FindAsync(telegramId);
     }
 
     public async Task<bool> IsUserWhitelistedAsync(long telegramId)
     {
-        var user = await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await context.TelegramUsers.FindAsync(telegramId);
         return user?.IsWhitelisted ?? false;
     }
 
     public async Task<bool> IsUserAdminAsync(long telegramId)
     {
-        var user = await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await context.TelegramUsers.FindAsync(telegramId);
         return user?.IsAdmin ?? false;
     }
 
     public async Task AddUserToWhitelistAsync(long telegramId)
     {
-        var user = await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await context.TelegramUsers.FindAsync(telegramId);
         if (user != null)
         {
             user.IsWhitelisted = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             _logger.LogInformation("User added to whitelist: {TelegramId}", telegramId);
         }
     }
 
     public async Task RemoveUserFromWhitelistAsync(long telegramId)
     {
-        var user = await _context.TelegramUsers.FindAsync(telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await context.TelegramUsers.FindAsync(telegramId);
         if (user != null)
         {
             user.IsWhitelisted = false;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             _logger.LogInformation("User removed from whitelist: {TelegramId}", telegramId);
         }
     }
@@ -87,6 +100,8 @@ public class DatabaseService
     public async Task<OutlineKey> CreateKeyAsync(long telegramId, string keyId, string keyName, string accessUrl,
         int dataLimitGb)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var key = new OutlineKey
         {
             TelegramId = telegramId,
@@ -98,33 +113,39 @@ public class DatabaseService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.OutlineKeys.Add(key);
-        await _context.SaveChangesAsync();
+        context.OutlineKeys.Add(key);
+        await context.SaveChangesAsync();
         _logger.LogInformation("Key created for user {TelegramId}: {KeyName}", telegramId, keyName);
         return key;
     }
 
     public async Task<OutlineKey?> GetUserKeyAsync(long telegramId)
     {
-        return await _context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
     }
 
     public async Task<List<OutlineKey>> GetKeysNeedingUpdateAsync(int updateIntervalDays)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var cutoffDate = DateTime.UtcNow.AddDays(-updateIntervalDays);
-        return await _context.OutlineKeys
+        return await context.OutlineKeys
             .Where(k => k.LastUpdated < cutoffDate)
             .ToListAsync();
     }
 
     public async Task UpdateKeyDataLimitAsync(long telegramId, int dataLimitGb)
     {
-        var key = await _context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var key = await context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
         if (key != null)
         {
             key.DataLimitGb = dataLimitGb;
             key.LastUpdated = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             _logger.LogInformation("Key updated for user {TelegramId}: new limit {DataLimit} GB", telegramId,
                 dataLimitGb);
         }
@@ -132,29 +153,37 @@ public class DatabaseService
 
     public async Task UpdateKeyLastUpdatedAsync(long telegramId)
     {
-        var key = await _context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var key = await context.OutlineKeys.FirstOrDefaultAsync(k => k.TelegramId == telegramId);
         if (key != null)
         {
             key.LastUpdated = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             _logger.LogInformation("Key LastUpdated refreshed for user {TelegramId}", telegramId);
         }
     }
 
     public async Task<List<TelegramUser>> GetPendingUsersAsync()
     {
-        return await _context.TelegramUsers
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.TelegramUsers
             .Where(u => !u.IsWhitelisted)
             .ToListAsync();
     }
 
     public async Task<List<OutlineKey>> GetAllKeysWithUsersAsync()
     {
-        return await _context.OutlineKeys.Include(x => x.TelegramUser).ToListAsync();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.OutlineKeys.Include(x => x.TelegramUser).ToListAsync();
     }
 
     public async Task<List<TelegramUser>> GetAllWhiteListUsersAsync()
     {
-        return await _context.TelegramUsers.Where(c => c.IsWhitelisted).ToListAsync();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.TelegramUsers.Where(c => c.IsWhitelisted).ToListAsync();
     }
 }

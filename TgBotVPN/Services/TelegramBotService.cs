@@ -14,18 +14,21 @@ public class TelegramBotService
     private readonly AdminService _adminService;
     private readonly DatabaseService _dbService;
     private readonly ILogger<TelegramBotService> _logger;
+    private readonly AdminValidationService _adminValidationService;
 
     public TelegramBotService(UserService userService,
         AdminService adminService,
         DatabaseService dbService,
         ITelegramBotClient botClient,
-        ILogger<TelegramBotService> logger)
+        ILogger<TelegramBotService> logger, 
+        AdminValidationService adminValidationService)
     {
         _userService = userService;
         _adminService = adminService;
         _dbService = dbService;
         _botClient = botClient;
         _logger = logger;
+        _adminValidationService = adminValidationService;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -75,17 +78,15 @@ public class TelegramBotService
             {
                 // Reply-menu buttons (they arrive as plain text messages)
                 case "🔑 Мой ключ":
-                    await HandleGetKeyAsync(chatId, userId, cancellationToken);
-                    break;
-                case "➕ Создать ключ":
-                    await HandleCreateKeyAsync(chatId, userId, username, cancellationToken);
+                    await _userService.HandleGetKeyAsync(chatId, userId, user.Username, cancellationToken);
                     break;
                 case "❓ Помощь":
                     await HandleHelpAsync(chatId, isAdmin, cancellationToken);
                     break;
-                
+
                 case "👥 На одобрение":
-                    await _adminService.HandleAdminPendingUsersAsync(chatId, userId, cancellationToken);;
+                    await _adminService.HandleAdminPendingUsersAsync(chatId, userId, cancellationToken);
+                    ;
                     break;
                 case "🗝 Все ключи":
                     await _adminService.HandleAdminAllKeysAsync(chatId, userId, cancellationToken);
@@ -96,13 +97,9 @@ public class TelegramBotService
                     {
                         await HandleStartAsync(chatId, userId, cancellationToken);
                     }
-                    else if (text.StartsWith("/create_key"))
-                    {
-                        await _userService.HandleCreateKeyAsync(chatId, userId, username, cancellationToken);
-                    }
                     else if (text.StartsWith("/my_key"))
                     {
-                        await _userService.HandleGetKeyAsync(chatId, userId, cancellationToken);
+                        await _userService.HandleGetKeyAsync(chatId, userId, username, cancellationToken);
                     }
                     else if (text.StartsWith("/help"))
                     {
@@ -153,7 +150,7 @@ public class TelegramBotService
 
     private async Task HandleStartAsync(long chatId, long userId, CancellationToken cancellationToken)
     {
-        var isAdmin = await _dbService.IsUserAdminAsync(userId);
+        var isAdmin = _adminValidationService.IsAdmin(userId);
         if (!isAdmin)
         {
             await _userService.HandleStartAsync(chatId, cancellationToken);
@@ -162,17 +159,6 @@ public class TelegramBotService
         {
             await _adminService.HandleStartAsync(chatId, cancellationToken);
         }
-    }
-
-    private async Task HandleCreateKeyAsync(long chatId, long userId, string username,
-        CancellationToken cancellationToken)
-    {
-        await _userService.HandleCreateKeyAsync(chatId, userId, username, cancellationToken);
-    }
-
-    private async Task HandleGetKeyAsync(long chatId, long userId, CancellationToken cancellationToken)
-    {
-        await _userService.HandleGetKeyAsync(chatId, userId, cancellationToken);
     }
 
     private async Task HandleHelpAsync(long chatId, bool isAdmin,
@@ -187,7 +173,7 @@ public class TelegramBotService
             await _userService.HandleHelpAsync(chatId, cancellationToken);
         }
     }
-    
+
 
     private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception,
         CancellationToken cancellationToken)
