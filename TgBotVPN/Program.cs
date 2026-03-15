@@ -50,12 +50,12 @@ try
         });
 
         // Services
-        services.AddScoped<DatabaseService>((provider) =>
+        services.AddSingleton<DatabaseService>(provider =>
         {
-            var ctx = provider.GetRequiredService<AppDbContext>();
+            var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
             var logger = provider.GetRequiredService<ILogger<DatabaseService>>();
             var adminValidationService = provider.GetRequiredService<AdminValidationService>();
-            return new DatabaseService(ctx, adminValidationService, logger);
+            return new DatabaseService(adminValidationService, logger, scopeFactory);
         });
         services.AddSingleton<ITelegramBotClient>(provider =>
         {
@@ -69,24 +69,9 @@ try
         services.AddHostedService<KeyUpdateService>();
         services.AddScoped<OutlineApiService>();
         services.AddSingleton<AdminValidationService>();
-        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("Database");
     });
 
     builder.UseSerilog();
-
-    // Add web application for health checks
-    builder.ConfigureWebHostDefaults(webBuilder =>
-    {
-        webBuilder.Configure(app =>
-        {
-            app.UseRouting();
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapHealthChecks("/health");
-            });
-        });
-    });
-
     var host = builder.Build();
 
     // Ensure database is created
