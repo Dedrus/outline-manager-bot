@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Net;
 using Microsoft.Extensions.Options;
 using Serilog;
 using TDV.OutlineClient;
@@ -61,6 +61,11 @@ public class OutlineApiService
             _logger.Information("Key {KeyId} deleted", keyId);
             return true;
         }
+        catch (HttpRequestException ex) when(ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            _logger.Information("Key {KeyId} already deleted", keyId);
+            return true;
+        } 
         catch (Exception ex)
         {
             _logger.Error(ex, "Exception updating key {KeyId}", keyId);

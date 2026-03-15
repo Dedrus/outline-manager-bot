@@ -92,10 +92,17 @@ public class DatabaseService
         if (user != null)
         {
             user.IsWhitelisted = false;
-            user.OutlineKey = null;
-            await context.SaveChangesAsync();
             _logger.LogInformation("User removed from whitelist: {TelegramId}", telegramId);
         }
+
+        var outLineKey = await context.OutlineKeys.Where(c => c.TelegramId == telegramId).FirstOrDefaultAsync();
+        if (outLineKey is not null)
+        {
+            context.OutlineKeys.Remove(outLineKey);
+            _logger.LogInformation("Outline key deleted for user: {TelegramId}", telegramId);
+        }
+        
+        await context.SaveChangesAsync();
     }
 
     public async Task<OutlineKey> CreateKeyAsync(long telegramId, string keyId, string keyName, string accessUrl,

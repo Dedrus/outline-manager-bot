@@ -101,16 +101,26 @@ public class AdminService
         }
 
         var key = await _dbService.GetUserKeyAsync(targetUserId);
+        bool keyDeleted = false;
         if (key is not null)
         {
-            await _outlineService.DeleteKeyAsync(key.KeyId);
+            keyDeleted = await _outlineService.DeleteKeyAsync(key.KeyId);
         }
 
-        await _dbService.RemoveUserFromWhitelistAsync(targetUserId);
-        var message = $"✅ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) удален из списка разрешенных.";
-        await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
-            cancellationToken: cancellationToken);
-        _logger.LogInformation("Admin {AdminId} removed user {UserId} from whitelist", userId, targetUserId);
+        if (keyDeleted)
+        {
+            await _dbService.RemoveUserFromWhitelistAsync(targetUserId);
+            var message = $"✅ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) удален из списка разрешенных.";
+            await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            _logger.LogInformation("Admin {AdminId} removed user {UserId} from whitelist", userId, targetUserId);
+        }
+        else
+        {
+            var message = $"❌ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) не удалось удалить ключ доступа.";
+            await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+        }
     }
 
     public async Task HandleAdminSetLimitAsync(long chatId, long userId, string text,
