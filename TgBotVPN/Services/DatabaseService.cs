@@ -20,7 +20,7 @@ public class DatabaseService
         _scopeFactory = scopeFactory;
     }
 
-    public async Task<TelegramUser> GetOrCreateUserAsync(long telegramId, string username)
+    public async Task<TelegramUser> GetOrCreateUserAsync(long telegramId, string? username)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -35,7 +35,7 @@ public class DatabaseService
         user = new TelegramUser
         {
             TelegramId = telegramId,
-            Username = username,
+            Username = username ?? "Unknown",
             IsWhitelisted = isAdmin,
             IsAdmin = isAdmin,
             CreatedAt = DateTime.UtcNow
