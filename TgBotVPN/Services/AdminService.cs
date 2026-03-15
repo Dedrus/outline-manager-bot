@@ -203,17 +203,25 @@ public class AdminService
             foreach (var keyWithUser in chunk)
             {
                 var status = keyWithUser.TelegramUser.IsWhitelisted ? "✅ Активен" : "❌ Неактивен";
-                builder.Append($"Пользователь: `{keyWithUser.TelegramUser.Username}`\n");
+        
+                // Экранируем специальные символы Markdown
+                var username = EscapeMarkdown(keyWithUser.TelegramUser.Username);
+                var keyName = EscapeMarkdown(keyWithUser.KeyName);
+                var keyId = EscapeMarkdown(keyWithUser.KeyId);
+                var lastUpdated = keyWithUser.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss");
+        
+                builder.Append($"Пользователь: {username}\n");
                 builder.Append($"Пользователь TG ID: `{keyWithUser.TelegramUser.TelegramId}`\n");
-                builder.Append($"Ключ: {keyWithUser.KeyName}\n");
-                builder.Append($"ID ключа: {keyWithUser.KeyId}\n");
+                builder.Append($"Ключ: {keyName}\n");
+                builder.Append($"ID ключа: {keyId}\n");
                 builder.Append($"Статус: {status}\n");
                 builder.Append($"Лимит: {keyWithUser.DataLimitGb} ГБ\n");
-                builder.Append($"Обновлен: {keyWithUser.LastUpdated:yyyy-MM-dd HH:mm:ss}\n");
+                builder.Append($"Обновлен: {lastUpdated}\n");
                 builder.Append("---\n");
             }
-            
-            await _botClient.SendTextMessageAsync(chatId, builder.ToString(), parseMode: ParseMode.Markdown,
+    
+            var messageText = builder.ToString();
+            await _botClient.SendTextMessageAsync(chatId, messageText, parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
             builder.Clear();
             await Task.Delay(50, cancellationToken);
@@ -355,5 +363,21 @@ public class AdminService
                       "Используйте меню снизу или введите /help для просмотра доступных команд.";
 
         await _botClient.SendTextMessageAsync(chatId, message, replyMarkup: GetMenuKeyboard(), cancellationToken: cancellationToken);
+    }
+    
+    // Метод для экранирования Markdown-символов
+    private string EscapeMarkdown(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+    
+        // Экранируем специальные символы Markdown
+        char[] specialChars = { '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' };
+        foreach (char c in specialChars)
+        {
+            text = text.Replace(c.ToString(), $"\\{c}");
+        }
+    
+        return text;
     }
 }

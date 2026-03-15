@@ -92,6 +92,7 @@ public class DatabaseService
         if (user != null)
         {
             user.IsWhitelisted = false;
+            user.OutlineKey = null;
             await context.SaveChangesAsync();
             _logger.LogInformation("User removed from whitelist: {TelegramId}", telegramId);
         }
