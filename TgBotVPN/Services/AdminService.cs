@@ -1,4 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
@@ -64,12 +69,12 @@ public class AdminService
             var userNotification = "🎉 Поздравляем! Администратор одобрил вашу заявку.\n\n" +
                                    "Теперь вы можете получить ваш VPN ключ, используя команду /my_key или кнопку \"🔑 Мой ключ\" в меню.";
             await _botClient.SendTextMessageAsync(targetUserId, userNotification, cancellationToken: cancellationToken);
-
         }
         catch (Exception e)
         {
             _logger.LogError(e, "Exception during user notification");
         }
+
         _logger.LogInformation("Admin {AdminId} added user {UserId} to whitelist", userId, targetUserId);
     }
 
@@ -117,7 +122,8 @@ public class AdminService
         }
         else
         {
-            var message = $"❌ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) не удалось удалить ключ доступа.";
+            var message =
+                $"❌ Пользователь `{user.Username}` (ID: `{user.TelegramId}`) не удалось удалить ключ доступа.";
             await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
         }
@@ -151,12 +157,27 @@ public class AdminService
             return;
         }
 
-        await _dbService.UpdateKeyDataLimitAsync(targetUserId, limitGb);
-        var message = $"✅ Лимит пользователя `{key.KeyName}` (ID: `{targetUserId}`) обновлен на `{limitGb} ГБ`.";
-        await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
-            cancellationToken: cancellationToken);
-        _logger.LogInformation("Admin {AdminId} set limit {LimitGb}GB for user {UserId}", userId, limitGb,
-            targetUserId);
+        // Update data limit on Outline API
+        var success = await _outlineService.UpdateKeyDataLimitAsync(key.KeyId, key.DataLimitGb);
+
+        if (success)
+        {
+            // Update LastUpdated in database
+            await _dbService.UpdateKeyLastUpdatedAsync(key.TelegramId);
+            var message = $"✅ Лимит пользователя `{key.KeyName}` (ID: `{targetUserId}`) обновлен на `{limitGb} ГБ`.";
+            await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            _logger.LogInformation("Admin {AdminId} set limit {LimitGb}GB for user {UserId}", userId, limitGb,
+                targetUserId);
+        }
+        else
+        {
+            var message = $"❌ Не удалось обновить лимит трафика (ID: `{targetUserId}`)`.";
+            await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            _logger.LogWarning("Failed to update key {KeyName} (TelegramId: {TelegramId})",
+                key.KeyName, key.TelegramId);
+        }
     }
 
     public async Task HandleAdminPendingUsersAsync(long chatId, long userId, CancellationToken cancellationToken)
@@ -213,13 +234,13 @@ public class AdminService
             foreach (var keyWithUser in chunk)
             {
                 var status = keyWithUser.TelegramUser.IsWhitelisted ? "✅ Активен" : "❌ Неактивен";
-        
+
                 // Экранируем специальные символы Markdown
                 var username = EscapeMarkdown(keyWithUser.TelegramUser.Username);
                 var keyName = EscapeMarkdown(keyWithUser.KeyName);
                 var keyId = EscapeMarkdown(keyWithUser.KeyId);
                 var lastUpdated = keyWithUser.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss");
-        
+
                 builder.Append($"Пользователь: {username}\n");
                 builder.Append($"Пользователь TG ID: `{keyWithUser.TelegramUser.TelegramId}`\n");
                 builder.Append($"Ключ: {keyName}\n");
@@ -229,7 +250,7 @@ public class AdminService
                 builder.Append($"Обновлен: {lastUpdated}\n");
                 builder.Append("---\n");
             }
-    
+
             var messageText = builder.ToString();
             await _botClient.SendTextMessageAsync(chatId, messageText, parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
@@ -372,22 +393,24 @@ public class AdminService
                       "Вы администратор.\n\n" +
                       "Используйте меню снизу или введите /help для просмотра доступных команд.";
 
-        await _botClient.SendTextMessageAsync(chatId, message, replyMarkup: GetMenuKeyboard(), cancellationToken: cancellationToken);
+        await _botClient.SendTextMessageAsync(chatId, message, replyMarkup: GetMenuKeyboard(),
+            cancellationToken: cancellationToken);
     }
-    
+
     // Метод для экранирования Markdown-символов
     private string EscapeMarkdown(string text)
     {
         if (string.IsNullOrEmpty(text))
             return text;
-    
+
         // Экранируем специальные символы Markdown
-        char[] specialChars = { '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' };
+        char[] specialChars =
+            { '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' };
         foreach (char c in specialChars)
         {
             text = text.Replace(c.ToString(), $"\\{c}");
         }
-    
+
         return text;
     }
 }

@@ -1,4 +1,7 @@
+using System;
 using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Serilog;
 using TDV.OutlineClient;
@@ -52,6 +55,7 @@ public class OutlineApiService
             return false;
         }
     }
+
     public async Task<bool> DeleteKeyAsync(string keyId)
     {
         try
@@ -61,11 +65,11 @@ public class OutlineApiService
             _logger.Information("Key {KeyId} deleted", keyId);
             return true;
         }
-        catch (HttpRequestException ex) when(ex.StatusCode == HttpStatusCode.NotFound)
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             _logger.Information("Key {KeyId} already deleted", keyId);
             return true;
-        } 
+        }
         catch (Exception ex)
         {
             _logger.Error(ex, "Exception updating key {KeyId}", keyId);

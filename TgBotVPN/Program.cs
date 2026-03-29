@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
+﻿using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +24,8 @@ var configuration = new ConfigurationBuilder()
 // Setup Serilog
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
-    .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 Log.Information("Starting Telegram VPN Bot...");
@@ -30,7 +33,7 @@ Log.Information("Starting Telegram VPN Bot...");
 try
 {
     var builder = Host.CreateDefaultBuilder(args);
-    
+
     builder.ConfigureServices((context, services) =>
     {
         // Configuration
@@ -98,7 +101,8 @@ try
 
     await botService.StartAsync(cts.Token);
 
-    Log.Information("Bot is running. Managing outline server with {URL}", host.Services.GetRequiredService<IOptions<OutlineApiSettings>>().Value.Url);
+    Log.Information("Bot is running. Managing outline server with {URL}",
+        host.Services.GetRequiredService<IOptions<OutlineApiSettings>>().Value.Url);
 
     // Keep the application running
     await Task.Delay(Timeout.Infinite, cts.Token);

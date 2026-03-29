@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
@@ -102,7 +106,7 @@ public class UserService
                           "Пожалуйста ознакомьтесь с правилами:\n\n" +
                           "1. Нельзя раздавать торренты с включенным VPN, наш сервер могут забанить.\n\n" +
                           "2. Пожалуйста, не занимайтесь экстремизмом, терроризмом и преступной деятельностью через этот VPN.\n\n" +
-                          "3. Уважайте других пользователей нашего VPN, у нас один сервер на всех.\n\n";;
+                          "3. Уважайте других пользователей нашего VPN, у нас один сервер на всех.\n\n";
 
 
         await _botClient.SendTextMessageAsync(chatId, helpMessage, replyMarkup: GetMenuKeyboard(),
