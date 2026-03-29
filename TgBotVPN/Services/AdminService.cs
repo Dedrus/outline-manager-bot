@@ -158,12 +158,12 @@ public class AdminService
         }
 
         // Update data limit on Outline API
-        var success = await _outlineService.UpdateKeyDataLimitAsync(key.KeyId, key.DataLimitGb);
+        var success = await _outlineService.UpdateKeyDataLimitAsync(key.KeyId, limitGb);
 
         if (success)
         {
             // Update LastUpdated in database
-            await _dbService.UpdateKeyLastUpdatedAsync(key.TelegramId);
+            await _dbService.UpdateKeyDataLimitAsync(key.TelegramId, limitGb);
             var message = $"✅ Лимит пользователя `{key.KeyName}` (ID: `{targetUserId}`) обновлен на `{limitGb} ГБ`.";
             await _botClient.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
