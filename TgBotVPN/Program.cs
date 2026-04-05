@@ -43,8 +43,7 @@ try
         services.Configure<TelegramBotSettings>(configuration.GetSection(TelegramBotSettings.SectionName));
         services.Configure<OutlineApiSettings>(configuration.GetSection(OutlineApiSettings.SectionName));
         services.Configure<DatabaseSettings>(configuration.GetSection(DatabaseSettings.SectionName));
-        services.Configure<KeyUpdateServiceSettings>(configuration.GetSection(KeyUpdateServiceSettings.SectionName));
-
+        
         // Database
         services.AddDbContext<AppDbContext>((provider, options) =>
         {
@@ -69,7 +68,6 @@ try
         services.AddScoped<TelegramBotService>();
         services.AddScoped<AdminService>();
         services.AddScoped<UserService>();
-        services.AddHostedService<KeyUpdateService>();
         services.AddScoped<OutlineApiService>();
         services.AddSingleton<AdminValidationService>();
     });
